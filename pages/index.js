@@ -122,21 +122,10 @@ export default function SMSAuthForm() {
 
   const submitForm = async (token) => {
     try {
-      // 1. プロラインのフォームに送信
-      console.log("📤 プロラインフォームに送信中...");
-      const prolineSuccess = await submitToProline();
-
-      if (!prolineSuccess) {
-        setError("プロラインへの送信に失敗しました");
-        return;
-      }
-
-      // プロライン送信が成功した時点で成功画面に遷移
-      console.log("✅ プロラインフォーム送信完了 - 成功画面に遷移します");
-      setSuccess(true);
-
-      // 2. メール送信（バックグラウンドで実行、エラーは無視）
-      fetch("/api/submit-form", {
+      // サーバーサイドでプロライン送信とメール送信を実行
+      console.log("📤 サーバーへ送信中...");
+      
+      const response = await fetch("/api/submit-form", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -146,38 +135,21 @@ export default function SMSAuthForm() {
           diagnosisType: "",
           uid: uid,
         }),
-      }).catch((err) => {
-        console.error("メール送信エラー（無視）:", err);
-        // メール送信のエラーは無視し、成功画面は維持
       });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        console.log("✅ 送信完了 - 成功画面に遷移します");
+        console.log("プロライン送信結果:", data.prolineSuccess);
+        setSuccess(true);
+      } else {
+        console.error("送信エラー:", data.error);
+        setError(data.error || "送信に失敗しました");
+      }
     } catch (err) {
       console.error("送信エラー:", err);
       setError("送信エラーが発生しました");
-    }
-  };
-
-  // プロラインのフォームに送信する関数
-  const submitToProline = async () => {
-    try {
-      const formData = new FormData();
-      formData.append("uid", uid || "");
-      formData.append("txt[wSpDEb629H]", userInfo.name);
-      formData.append("txt[txnzkcjsDt]", userInfo.phone);
-
-      const response = await fetch(
-        "https://z8nhy9aq.autosns.app/fm/s0hmTUfxp3",
-        {
-          method: "POST",
-          body: formData,
-          mode: "no-cors",
-        }
-      );
-
-      console.log("✅ プロラインフォーム送信完了");
-      return true;
-    } catch (error) {
-      console.error("❌ プロラインフォーム送信エラー:", error);
-      return false;
     }
   };
 
